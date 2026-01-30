@@ -1,9 +1,6 @@
 services:
   askld:
-    image: askld:latest
-    build:
-      context: ../askl
-      dockerfile: docker/askld/Dockerfile
+    image: ghcr.io/codevyr/askld:v0.1.1
     command: ["--index", "/data/index.db", "--format", "sqlite", "--host", "0.0.0.0", "--port", "8080"]
     volumes:
       - /home/codevyr/index/:/data/:rw
@@ -11,8 +8,8 @@ services:
     environment:
       - RUST_LOG=info
   codevyr:
-    image: codevyr:prod
-    build: ../askl-react
+    #image: ghcr.io/codevyr/codevyr:main-0d22b13
+    image: ghcr.io/codevyr/codevyr:v0.1.4
     environment:
       - API_HOST=http://askld:8080
     ports:
