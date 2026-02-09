@@ -1,32 +1,33 @@
 services:
   askld:
-    image: ghcr.io/codevyr/askld:sha-2024a23506804c1ec241f8d9e0944787950435d6
-    command: ["serve", "--index", "/data/index.db", "--format", "sqlite", "--host", "0.0.0.0", "--port", "8080"]
+    image: ghcr.io/codevyr/askld:v0.1.3
+    command: ["serve", "--database-url", "postgres://postgres:postgres@db:5432/askl", "--host", "0.0.0.0", "--port", "8080"]
     volumes:
       - /home/codevyr/index/:/data/:rw
       - /home/codevyr/trace/:/trace/:rw
     environment:
       - RUST_LOG=info
-      - ASKL_DATABASE_URL=postgres://postgres:postgres@auth-db:5432/askl
       - ASKL_BOOTSTRAP_MODE=true
+      - ASKL_CORS_ORIGINS=https://ui.codevyr.com
+    ports:
+      - "3002:8080"
     depends_on:
-      - auth-db
+      - db
     networks:
       - app
-      - auth-db
-  auth-db:
+      - db
+  db:
     image: postgres:16
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=askl
     volumes:
-      - askl-auth-db:/var/lib/postgresql/data
+      - askl-db:/var/lib/postgresql/data
     networks:
-      - auth-db
+      - db
   codevyr:
-    #image: ghcr.io/codevyr/codevyr:main-0d22b13
-    image: ghcr.io/codevyr/codevyr:v0.1.4
+    image: ghcr.io/codevyr/codevyr:v0.1.5
     environment:
       - API_HOST=http://askld:8080
     ports:
@@ -35,9 +36,9 @@ services:
       - app
 
 volumes:
-  askl-auth-db:
+  askl-db:
 
 networks:
   app: {}
-  auth-db:
+  db:
     internal: true
