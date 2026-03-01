@@ -1,4 +1,4 @@
-CONTEXT=codevyr
+CONTEXT ?= default
 
 build: 
 	docker compose build
