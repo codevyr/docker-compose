@@ -1,6 +1,6 @@
 services:
   askld:
-    image: ghcr.io/codevyr/askld:v0.1.3
+    image: ghcr.io/codevyr/askld:v0.2.0
     command: ["serve", "--database-url", "postgres://postgres:postgres@db:5432/askl", "--host", "0.0.0.0", "--port", "8080"]
     volumes:
       - /home/codevyr/index/:/data/:rw
@@ -27,7 +27,7 @@ services:
     networks:
       - db
   codevyr:
-    image: ghcr.io/codevyr/codevyr:v0.1.5
+    image: ghcr.io/codevyr/codevyr:v0.2.0
     environment:
       - API_HOST=http://askld:8080
     ports:
