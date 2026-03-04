@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-image="${IMAGE:-askl-golang-indexer:latest}"
+image="${IMAGE:-ghcr.io/codevyr/askl-golang-indexer:latest}"
 
 usage() {
   echo "Usage: $0 [--image IMAGE] <source-dir> <output-index-file> [indexer-args...]" >&2
