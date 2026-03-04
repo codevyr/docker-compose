@@ -26,7 +26,7 @@ services:
     image: ghcr.io/codevyr/codevyr:v0.2.0
     environment:
       - API_HOST=http://askld:8080
-      - NEXT_PUBLIC_ASKLD_URL=${NEXT_PUBLIC_ASKLD_URL}
+      - NEXT_PUBLIC_ASKLD_URL=${NEXT_PUBLIC_ASKLD_URL:-https://api.codevyr.com}
     ports:
       - "3000:3000"
     networks:
