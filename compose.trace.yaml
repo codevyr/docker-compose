@@ -1,0 +1,4 @@
+services:
+  askld:
+    volumes:
+      - ${ASKL_TRACE_DIR:-/home/codevyr/trace}:/trace:rw

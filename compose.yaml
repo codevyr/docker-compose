@@ -2,9 +2,6 @@ services:
   askld:
     image: ghcr.io/codevyr/askld:v0.2.0
     command: ["serve", "--database-url", "postgres://postgres:postgres@db:5432/askl", "--host", "0.0.0.0", "--port", "8080"]
-    volumes:
-      - /home/codevyr/index/:/data/:rw
-      - /home/codevyr/trace/:/trace/:rw
     environment:
       - RUST_LOG=info
       - ASKL_BOOTSTRAP_MODE=true
