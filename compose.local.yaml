@@ -3,3 +3,4 @@ services:
     environment:
       - ASKL_ALLOW_INSECURE_TOKENS=true
       - ASKL_CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      - ASKL_MAX_UPLOAD_BYTES=536870912

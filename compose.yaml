@@ -1,6 +1,6 @@
 services:
   askld:
-    image: ghcr.io/codevyr/askld:v0.2.0
+    image: ghcr.io/codevyr/askld:v0.2.1
     command: ["serve", "--database-url", "postgres://postgres:postgres@db:5432/askl", "--host", "0.0.0.0", "--port", "8080"]
     environment:
       - RUST_LOG=info
