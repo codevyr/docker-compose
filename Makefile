@@ -1,4 +1,6 @@
 CONTEXT ?= default
+NEXT_PUBLIC_ASKLD_URL ?= http://localhost:3002
+export NEXT_PUBLIC_ASKLD_URL
 
 build: 
 	docker compose build
