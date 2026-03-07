@@ -32,14 +32,14 @@ Use the helper script to run the indexer image.
 ```sh
 ./bin/generate_index_docker.sh \
   --project kubernetes \
-  --src-path cmd/kubelet \
+  --path cmd/kubelet \
   ./kubernetes ./index/index-kubernetes.pb \
   --include-git-files
 ```
 
 Notes:
 - `--project` sets the in-container mount point to `/<project>` and is also forwarded to the indexer.
-- `--src-path` is a relative path inside `/<project>` that defines where indexing starts (default: `.`).
+- Indexer args are forwarded as-is; the container runs with the working directory set to the project root, and `--path` values are prefixed with `/<project>` automatically (quote globs like `'cmd/*'`).
 - The output index path is the second positional argument; do not pass `--index`.
 
 ## Files

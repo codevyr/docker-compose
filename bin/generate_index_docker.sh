@@ -4,12 +4,11 @@ set -euo pipefail
 
 image="${IMAGE:-ghcr.io/codevyr/askl-golang-indexer:latest}"
 project_name="project"
-src_path_rel="."
 
 usage() {
-  echo "Usage: $0 [--image IMAGE] [--project NAME] [--src-path REL] <source-dir> <output-index-file> [indexer-args...]" >&2
-  echo "  --src-path REL   Relative path inside /<project> where indexing starts (default: .)" >&2
-  echo "Example: $0 --image askl-golang-indexer:latest --project kubernetes --src-path cmd/kubelet ./repo ./out/index.pb --include-git-files" >&2
+  echo "Usage: $0 [--image IMAGE] [--project NAME] <source-dir> <output-index-file> [indexer-args...]" >&2
+  echo "Example: $0 --image askl-golang-indexer:latest --project kubernetes ./repo ./out/index.pb --include-git-files --path cmd/kubelet" >&2
+  echo "  Note: --path values are automatically prefixed with /<project> inside the container." >&2
 }
 
 while [[ $# -gt 0 ]]; do
@@ -91,22 +90,6 @@ while [[ $# -gt 0 ]]; do
       index_arg_present=1
       shift 1
       ;;
-    --src-path)
-      src_path_rel="${2:-}"
-      if [[ -z "$src_path_rel" ]]; then
-        echo "error: --src-path requires a value" >&2
-        exit 1
-      fi
-      shift 2
-      ;;
-    --src-path=*)
-      src_path_rel="${1#*=}"
-      if [[ -z "$src_path_rel" ]]; then
-        echo "error: --src-path requires a value" >&2
-        exit 1
-      fi
-      shift 1
-      ;;
     --project)
       project_arg_present=1
       project_name="${2:-}"
@@ -127,6 +110,23 @@ while [[ $# -gt 0 ]]; do
       extra_args+=("$1")
       shift 1
       ;;
+    --path)
+      if [[ -z "${2:-}" ]]; then
+        echo "error: $1 requires a value" >&2
+        exit 1
+      fi
+      path_value="${2#/}"
+      path_value="${path_value#./}"
+      extra_args+=(--path "/${project_name}/${path_value}")
+      shift 2
+      ;;
+    --path=*)
+      path_value="${1#*=}"
+      path_value="${path_value#/}"
+      path_value="${path_value#./}"
+      extra_args+=(--path "/${project_name}/${path_value}")
+      shift 1
+      ;;
     *)
       extra_args+=("$1")
       shift 1
@@ -139,22 +139,6 @@ if [[ $index_arg_present -eq 1 ]]; then
   exit 1
 fi
 
-if [[ "${src_path_rel}" = /* ]]; then
-  echo "error: --src-path must be a relative path (got ${src_path_rel})" >&2
-  exit 1
-fi
-
-src_path_rel="${src_path_rel#./}"
-if [[ -z "$src_path_rel" || "$src_path_rel" == "." ]]; then
-  src_path_rel=""
-fi
-
-index_root="/${project_name}"
-if [[ -n "$src_path_rel" ]]; then
-  index_root="${index_root}/${src_path_rel}"
-fi
-
-extra_args+=(--path "${index_root}")
 if [[ $project_arg_present -eq 0 ]]; then
   extra_args+=(--project "${project_name}")
 fi
@@ -162,6 +146,7 @@ extra_args+=(--index "/out/${out_base}")
 
 docker run --rm \
   --user "$(id -u):$(id -g)" \
+  -w "/${project_name}" \
   -v "${src_dir_abs}:/${project_name}:ro" \
   -v "${out_dir_abs}:/out" \
   -e "CGO_ENABLED=0" \
