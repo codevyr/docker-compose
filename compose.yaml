@@ -5,6 +5,8 @@ services:
     environment:
       - RUST_LOG=info
       - ASKL_BOOTSTRAP_MODE=true
+      - ASKL_CORS_ORIGINS=https://ui.codevyr.com
+      - ASKL_MAX_UPLOAD_BYTES=536870912
     ports:
       - "3002:8080"
     depends_on:
