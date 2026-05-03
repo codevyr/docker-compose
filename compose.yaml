@@ -1,16 +1,17 @@
 services:
   askld:
-    image: ghcr.io/codevyr/askld:v0.2.1
+    image: ghcr.io/codevyr/askld:0.3.0-rc1
     command: ["serve", "--database-url", "postgres://postgres:postgres@db:5432/askl", "--host", "0.0.0.0", "--port", "8080"]
     environment:
       - RUST_LOG=info
       - ASKL_BOOTSTRAP_MODE=true
       - ASKL_CORS_ORIGINS=https://ui.codevyr.com
-      - ASKL_MAX_UPLOAD_BYTES=536870912
+      - ASKL_MAX_UPLOAD_BYTES=2147483648
     ports:
       - "3002:8080"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - app
       - db
@@ -20,12 +21,17 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=askl
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
     volumes:
       - askl-db:/var/lib/postgresql/data
     networks:
       - db
   codevyr:
-    image: ghcr.io/codevyr/codevyr:v0.2.0
+    image: ghcr.io/codevyr/codevyr:v0.3.0-rc1
     environment:
       - API_HOST=http://askld:8080
       - NEXT_PUBLIC_ASKLD_URL=${NEXT_PUBLIC_ASKLD_URL:-https://api.codevyr.com}

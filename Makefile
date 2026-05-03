@@ -1,7 +1,3 @@
-CONTEXT ?= default
-NEXT_PUBLIC_ASKLD_URL ?= http://localhost:3002
-export NEXT_PUBLIC_ASKLD_URL
-
 build: 
 	docker compose build
 
@@ -17,8 +13,19 @@ load-index:
 	chmod -R go+w ../index/
 	rsync -avz ../index codevyr:~/
 
-deploy:
-	docker --context $(CONTEXT) compose up -d
+deploy-local:
+	docker compose -f compose.yaml -f compose.local.yaml up -d
 
-reload:
-	docker --context $(CONTEXT) compose restart
+deploy-remote:
+	docker --context codevyr compose -f compose.yaml up -d
+
+reload-local:
+	docker compose -f compose.yaml -f compose.local.yaml restart
+
+reload-remote:
+	docker --context codevyr compose -f compose.yaml restart
+
+
+.PHONY: deploy reload
+deploy: deploy-remote
+reload: reload-remote
