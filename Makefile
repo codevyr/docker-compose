@@ -16,11 +16,17 @@ load-index:
 deploy-local:
 	docker compose -f compose.yaml -f compose.local.yaml up -d
 
+deploy-dev:
+	docker compose -f compose.yaml -f compose.dev.yaml up -d
+
 deploy-remote:
 	docker --context codevyr compose -f compose.yaml up -d
 
 reload-local:
 	docker compose -f compose.yaml -f compose.local.yaml restart
+
+reload-dev:
+	docker compose -f compose.yaml -f compose.dev.yaml restart
 
 reload-remote:
 	docker --context codevyr compose -f compose.yaml restart
