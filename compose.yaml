@@ -1,6 +1,6 @@
 services:
   askld:
-    image: ghcr.io/codevyr/askld:0.3.0
+    image: ghcr.io/codevyr/askld:0.3.1
     command: ["serve", "--database-url", "postgres://postgres:postgres@db:5432/askl", "--host", "0.0.0.0", "--port", "8080"]
     environment:
       - RUST_LOG=info
@@ -16,7 +16,7 @@ services:
       - app
       - db
   db:
-    image: postgres:16
+    image: postgres:16.14
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -31,7 +31,7 @@ services:
     networks:
       - db
   codevyr:
-    image: ghcr.io/codevyr/codevyr:0.3.2
+    image: ghcr.io/codevyr/codevyr:0.3.4
     environment:
       - API_HOST=http://askld:8080
       - NEXT_PUBLIC_ASKLD_URL=${NEXT_PUBLIC_ASKLD_URL:-https://api.codevyr.com}
