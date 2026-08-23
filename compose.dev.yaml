@@ -5,6 +5,8 @@ services:
       - ASKL_ALLOW_INSECURE_TOKENS=true
       - ASKL_CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
       - ASKL_MAX_UPLOAD_BYTES=2147483648
+      - ASKL_QUERY_TIMEOUT=120
+      - ASKL_SQL_CACHE_BYTES=0
   codevyr:
     image: codevyr:latest
     environment:
