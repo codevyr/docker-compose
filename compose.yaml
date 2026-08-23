@@ -17,6 +17,15 @@ services:
       - db
   db:
     image: postgres:16.14
+    # A SIGKILLed postgres restarts through crash recovery, which since PG15
+    # discards the in-memory cumulative statistics -- so autovacuum forgets
+    # every bulk import and the planner keeps stale estimates.  That cost this
+    # deployment a 0.4ms query timing out at 120s.  Two caveats: dockerd
+    # ignores this on host reboot or daemon restart, where its own
+    # --shutdown-timeout applies (15s default; set "shutdown-timeout" in
+    # /etc/docker/daemon.json), and StopTimeout is fixed at container creation,
+    # so the container must be recreated for this to take effect.
+    stop_grace_period: 120s
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -26,6 +35,9 @@ services:
       interval: 2s
       timeout: 3s
       retries: 10
+      # Crash recovery and first-boot initdb both outlast the ~20s the retry
+      # budget allows, and depends_on: service_healthy would fail the deploy.
+      start_period: 120s
     volumes:
       - askl-db:/var/lib/postgresql/data
     networks:
