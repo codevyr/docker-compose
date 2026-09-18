@@ -1,6 +1,6 @@
 services:
   askld:
-    image: ghcr.io/codevyr/askld:0.3.1
+    image: ghcr.io/codevyr/askld:0.4.0-rc4
     command: ["serve", "--database-url", "postgres://postgres:postgres@db:5432/askl", "--host", "0.0.0.0", "--port", "8080"]
     environment:
       - RUST_LOG=info
@@ -26,6 +26,12 @@ services:
     # /etc/docker/daemon.json), and StopTimeout is fixed at container creation,
     # so the container must be recreated for this to take effect.
     stop_grace_period: 120s
+    # Docker's default /dev/shm is 64MB.  Postgres puts parallel workers'
+    # shared tuple stores there, so a wide parallel scan dies with
+    # "could not resize shared memory segment ... No space left on device"
+    # long before it runs out of real memory.  1g is well clear of the
+    # largest plans this deployment produces.
+    shm_size: 1gb
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -43,7 +49,7 @@ services:
     networks:
       - db
   codevyr:
-    image: ghcr.io/codevyr/codevyr:0.3.4
+    image: ghcr.io/codevyr/codevyr:0.4.0-rc3
     environment:
       - API_HOST=http://askld:8080
       - NEXT_PUBLIC_ASKLD_URL=${NEXT_PUBLIC_ASKLD_URL:-https://api.codevyr.com}
