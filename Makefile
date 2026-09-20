@@ -19,6 +19,9 @@ deploy-local:
 deploy-dev:
 	docker compose -f compose.yaml -f compose.dev.yaml up -d
 
+deploy-dev-trace:
+	docker compose -f compose.yaml -f compose.dev.yaml -f compose.trace.yaml up -d
+
 deploy-remote:
 	docker --context codevyr compose -f compose.yaml up -d
 
@@ -27,6 +30,9 @@ reload-local:
 
 reload-dev:
 	docker compose -f compose.yaml -f compose.dev.yaml restart
+
+reload-dev-trace:
+	docker compose -f compose.yaml -f compose.dev.yaml -f compose.trace.yaml restart
 
 reload-remote:
 	docker --context codevyr compose -f compose.yaml restart
