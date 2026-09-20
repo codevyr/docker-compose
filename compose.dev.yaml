@@ -7,6 +7,42 @@ services:
       - ASKL_MAX_UPLOAD_BYTES=2147483648
       - ASKL_QUERY_TIMEOUT=120
       - ASKL_SQL_CACHE_BYTES=0
+  db:
+    # Postgres ships stock defaults, which are sized for a small machine on a
+    # rotating disk: random_page_cost=4, shared_buffers=128MB, work_mem=4MB,
+    # effective_cache_size=4GB.  This host has 61GB of RAM, a 25GB database and
+    # NVMe storage, so the planner was costing index scans about four times
+    # what they actually cost and picking whole-table hash joins over index
+    # lookups.  Measured on the amdgpu refs-children statement (the worst
+    # shape we have), holding everything else equal:
+    #
+    #   stock                                    3093 ms
+    #   work_mem=64MB                            1706 ms   (hash join, less spill)
+    #   random_page_cost=1.1                       71 ms   (switches to nested loop)
+    #   random_page_cost=1.0 + 12GB cache size     11 ms
+    #
+    # The win is the join strategy, not the memory: with a correct
+    # random_page_cost the planner drives from the parent instances and lets
+    # the LIMIT stop it early, instead of hashing all 23M rows of symbol_refs
+    # and spilling ~5GB to temp files.
+    #
+    # These numbers are sized for THIS host.  A smaller deployment needs its
+    # own shared_buffers/effective_cache_size, which is why they live in the
+    # dev overlay rather than compose.yaml.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=8GB
+      - -c
+      - effective_cache_size=24GB
+      - -c
+      - work_mem=64MB
+      - -c
+      - maintenance_work_mem=1GB
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=200
   codevyr:
     image: codevyr:latest
     environment:

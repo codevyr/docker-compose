@@ -32,6 +32,52 @@ services:
     # long before it runs out of real memory.  1g is well clear of the
     # largest plans this deployment produces.
     shm_size: 1gb
+    # Postgres ships defaults sized for a small machine on a rotating disk.
+    # The one that matters is random_page_cost=4: it costs an index scan at 4x
+    # a sequential page, so the planner preferred hashing all 23M rows of
+    # symbol_refs over driving from a few hundred parent instances.  Measured
+    # on the amdgpu refs-children statement, work_mem left at the 4MB stock:
+    #
+    #   random_page_cost=4      3080 ms   read 2.0GB, temp 3.0GB in / 4.7GB out
+    #   random_page_cost=1.1      48 ms   read 0,     no temp at all
+    #
+    # That is ~10GB of I/O per query versus ~100MB, which is what decides it on
+    # a memory-constrained host: the fix is the join strategy, and it costs no
+    # memory.  Raising work_mem instead only halves the spill (1706 ms) and
+    # does need memory, so it is NOT the lever here.  Do not hedge upward --
+    # random_page_cost=2.0 already measured 339 ms; 1.1 and 1.5 are equivalent
+    # (59 vs 56 ms), so use 1.5 on network-attached storage, 1.1 on local SSD.
+    #
+    # Sized for a 4 vCPU / 8GB host running the whole stack: askld holds a
+    # 256MB SQL cache by default (ASKL_SQL_CACHE_BYTES) and the Next.js
+    # frontend wants a few hundred MB, so Postgres gets ~6GB to split between
+    # shared_buffers and the OS page cache.  work_mem is per sort/hash node PER
+    # parallel worker, so it multiplies -- keep it small.  compose.dev.yaml
+    # replaces this whole command with values for a 61GB host.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=1536MB
+      - -c
+      - effective_cache_size=4GB
+      - -c
+      - work_mem=8MB
+      - -c
+      - maintenance_work_mem=256MB
+      - -c
+      # Bounded separately: up to 3 autovacuum workers run at once, and each
+      # would otherwise take maintenance_work_mem.
+      - autovacuum_work_mem=128MB
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - max_worker_processes=4
+      - -c
+      - max_parallel_workers=4
+      - -c
+      - max_parallel_workers_per_gather=2
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
