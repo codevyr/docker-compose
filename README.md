@@ -74,6 +74,42 @@ Two things worth knowing before the first run:
   the end says which happened; retry an upload alone with
   `--skip-build --skip-generate <project>`.
 
+## Ship the indices to production
+
+`make load-index` rsyncs `../index` to `codevyr:~/` and stops there: nothing
+on the remote reads it until each project is uploaded into the remote askld.
+That is the same two steps `reindex.sh`'s `upload()` runs locally -- copy the
+project directory into the askld container, then `askld index upload --force`
+-- under the remote docker context:
+
+```sh
+cid=$(docker --context codevyr compose -f compose.yaml ps -q askld)
+docker --context codevyr cp ~/index/<project> "$cid:/tmp/"
+docker --context codevyr compose -f compose.yaml exec -T askld \
+    askld index upload --url 127.0.0.1:8080 --token "$ASKL_TOKEN" --force /tmp/<project>
+```
+
+Upload `ucx` first as the smoke test and `linux` last; `--force` purges the
+project with that name before uploading, exactly as on the dev stack.
+
+**Order matters when the engine changes too.** The new askld runs its schema
+migrations at boot over whatever rows exist, and an index produced for an
+older engine cannot be served by a newer one anyway -- so when a release brings
+both a new engine and regenerated indices, **delete every project before
+`make deploy-remote`**:
+
+```sh
+for p in ucx ompi rdma-core open-gpu-kernel-modules linux; do
+  docker --context codevyr compose -f compose.yaml exec -T askld \
+      askld index delete-project "$p"
+done
+```
+
+The migrations then run over empty tables and boot is instant; there is no
+window in which the new engine serves the old indices wrongly; and nothing is
+migrated only to be replaced minutes later. Do it after the tag is bumped and
+immediately before the deploy -- in between, production serves nothing.
+
 The script warns when the running `askld` container predates `askl`'s HEAD,
 because that server validates the upload and answers every query against it.
 Refresh it with:
