@@ -84,13 +84,39 @@ project directory into the askld container, then `askld index upload --force`
 
 ```sh
 cid=$(docker --context codevyr compose -f compose.yaml ps -q askld)
-docker --context codevyr cp ~/index/<project> "$cid:/tmp/"
+ssh codevyr "docker cp ~/index/<project> $cid:/tmp/"
 docker --context codevyr compose -f compose.yaml exec -T askld \
-    askld index upload --url 127.0.0.1:8080 --token "$ASKL_TOKEN" --force /tmp/<project>
+    askld index upload --url https://api.codevyr.com --token "$ASKL_TOKEN" --force /tmp/<project>
 ```
+
+Two things differ from the dev stack. The copy runs *on* the host over ssh:
+`docker --context codevyr cp` would stream the index through the docker API a
+second time, after rsync already put it in `~/index`. And the URL is the public
+HTTPS one even from inside the container: production does not set
+`ASKL_ALLOW_INSECURE_TOKENS`, so a token presented over plain HTTP
+(`127.0.0.1:8080`) is answered with `403 API tokens require HTTPS`. nginx in
+front of it allows 400 MB per request and 300 s per response; uploads are
+chunked well below that, but a single `delete-project` of `linux` is not (see
+below). `ASKL_TOKEN` is the production key -- `compose/.env` holds the dev
+stack's key too, so take the right line rather than sourcing the file.
 
 Upload `ucx` first as the smoke test and `linux` last; `--force` purges the
 project with that name before uploading, exactly as on the dev stack.
+
+**Run the `linux` upload client off the production host.** The client reads
+the whole `project.pb` into memory and decodes it -- about 4.2 GB for the
+kernel's 1 GB file -- and the 7.7 GB host without swap OOM-kills it (exec
+exit 137) after it has created the project and before the first chunk, so the
+project is left `[uploading]` and empty. From a machine with memory to spare,
+the same image works against the public endpoint (26 min on 2026-10-18):
+
+```sh
+docker run --rm --network host -e ASKL_TOKEN="$ASKL_TOKEN" \
+    -v "$PWD/../index/linux:/tmp/linux:ro" ghcr.io/codevyr/askld:<tag> \
+    index upload --url https://api.codevyr.com --timeout 0 --window 4 --force /tmp/linux
+```
+
+The six smaller projects (up to kubernetes' 294 MB) fit on the host.
 
 **Order matters when the engine changes too.** The new askld runs its schema
 migrations at boot over whatever rows exist, and an index produced for an
@@ -99,9 +125,9 @@ both a new engine and regenerated indices, **delete every project before
 `make deploy-remote`**:
 
 ```sh
-for p in ucx ompi rdma-core open-gpu-kernel-modules linux; do
+for p in ucx ompi rdma-core open-gpu-kernel-modules kueue kubernetes linux; do
   docker --context codevyr compose -f compose.yaml exec -T askld \
-      askld index delete-project "$p"
+      askld index delete-project --name "$p" --url https://api.codevyr.com --token "$ASKL_TOKEN"
 done
 ```
 
@@ -109,6 +135,15 @@ The migrations then run over empty tables and boot is instant; there is no
 window in which the new engine serves the old indices wrongly; and nothing is
 migrated only to be replaced minutes later. Do it after the tag is bumped and
 immediately before the deploy -- in between, production serves nothing.
+
+Deleting `linux` (5.3 M symbols, 13 M instances, 20 M references) outlasts
+nginx's 300 s: the CLI prints `504 Gateway Time-out` while the server keeps
+going. Treat that as "still running", not "failed": the project shows as
+`linux [deleting]` in `list-projects`, postgres sits near 100 % CPU, and
+`docker --context codevyr compose -f compose.yaml logs askld` ends with
+`delete_project: complete project_id=…` when it is done (31 minutes on the
+2026-10-18 release, 29 of them in `DELETE FROM index.symbols`). Deploy only
+after that line.
 
 The script warns when the running `askld` container predates `askl`'s HEAD,
 because that server validates the upload and answers every query against it.
